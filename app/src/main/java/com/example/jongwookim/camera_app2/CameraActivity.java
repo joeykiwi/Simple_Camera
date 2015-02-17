@@ -1,6 +1,7 @@
 package com.example.jongwookim.camera_app2;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -9,11 +10,14 @@ import android.hardware.Camera;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.view.MotionEventCompat;
 import android.support.v7.app.ActionBarActivity;
+import android.util.FloatMath;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -38,21 +42,22 @@ import java.util.Date;
 
 public class CameraActivity extends ActionBarActivity implements SurfaceHolder.Callback {
 
-    Camera camera;
-    SurfaceView surfaceView;
+    Camera mcamera;
+    Camera.Parameters params;
+    boolean mpreviewing = false;
+    LayoutInflater mcontrolInflater = null;
     SurfaceHolder surfaceHolder;
-    boolean previewing = false;
-    LayoutInflater controlInflater = null;
-    String sdCardDir = Environment.getExternalStorageDirectory().toString() + "/DCIM/Photo";
-    private GridView gridView;
-    private File targetDirector;
-    private File[] files;
-    protected static ArrayList<Photo_Image> images = new ArrayList<Photo_Image>();
 
     Button snapButton;
     ToggleButton previewButton;
     ToggleButton silentButton;
     boolean silent = false;
+
+    String DEBUG_TAG = "Joey";
+
+    int cameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
+    float mDist;
+    int zoomController = 0;
 
 
 
@@ -61,14 +66,15 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera);
 
-        controlInflater = LayoutInflater.from(getBaseContext());
-        View viewControl = controlInflater.inflate(R.layout.control, null);
+        mcontrolInflater = LayoutInflater.from(getBaseContext());
+        View viewControl = mcontrolInflater.inflate(R.layout.control, null);
         ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
                 ViewGroup.LayoutParams.FILL_PARENT);
         this.addContentView(viewControl, layoutParams);
 
+
         getWindow().setFormat(PixelFormat.UNKNOWN);
-        surfaceView = (SurfaceView) findViewById(R.id.snap_Frame);
+        SurfaceView surfaceView = (SurfaceView) findViewById(R.id.snap_Frame);
         surfaceHolder = surfaceView.getHolder();
         surfaceHolder.addCallback(this);
         surfaceHolder.setType(surfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -80,9 +86,9 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
-                    camera.startPreview();
+                    mcamera.startPreview();
                 } else {
-                    camera.stopPreview();
+                    mcamera.stopPreview();
                 }
             }
         });
@@ -102,14 +108,14 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 
 
 
-        LinearLayout cameraSurface = (LinearLayout) findViewById(R.id.control_backgroud);
-        cameraSurface.setOnClickListener(new LinearLayout.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                snapButton.setEnabled(false);
-                camera.autoFocus(autoFocusCallback);
-            }
-        });
+//        LinearLayout cameraSurface = (LinearLayout) findViewById(R.id.control_backgroud);
+//        cameraSurface.setOnClickListener(new LinearLayout.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                snapButton.setEnabled(false);
+//                mcamera.autoFocus(autoFocusCallback);
+//            }
+//        });
 
 
 
@@ -120,14 +126,78 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 //                AudioManager mgr = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
 //                mgr.setStreamMute(AudioManager.STREAM_SYSTEM, true);
                 if (silent) {
-                    camera.takePicture(null, rawCallback, jpgCallback);
+                    mcamera.takePicture(null, rawCallback, jpgCallback);
                 } else {
-                    camera.takePicture(sCallback, rawCallback, jpgCallback);
+                    mcamera.takePicture(sCallback, rawCallback, jpgCallback);
                 }
             }
 
         });
+
+        ToggleButton selfieButton = (ToggleButton) findViewById(R.id.selfie_button);
+        selfieButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    mcamera.stopPreview();
+                    mcamera.release();
+                    mcamera = null;
+
+                    cameraId = Camera.CameraInfo.CAMERA_FACING_FRONT;
+
+                    mcamera = mcamera.open(cameraId);
+                    mcamera.setDisplayOrientation(90);
+                    try {
+                        mcamera.setPreviewDisplay(surfaceHolder);
+                        mcamera.startPreview();
+                    } catch(IOException ie) {
+                        ie.getStackTrace();
+                    }
+
+                } else {
+                    mcamera.stopPreview();
+                    mcamera.release();
+                    mcamera = null;
+
+                    cameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
+
+                    mcamera = mcamera.open(cameraId);
+                    mcamera.setDisplayOrientation(90);
+                    try {
+                        mcamera.setPreviewDisplay(surfaceHolder);
+                        mcamera.startPreview();
+                    } catch(IOException ie) {
+                        ie.getStackTrace();
+                    }
+
+                }
+            }
+        });
+
+        final ToggleButton flashButton = (ToggleButton) findViewById(R.id.flash_button);
+        flashButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    if (cameraId != Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                        params = mcamera.getParameters();
+                        params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+                        mcamera.setParameters(params);
+                    } else {
+                        Toast.makeText(getApplicationContext(), "only for back camera", Toast.LENGTH_SHORT).show();
+                        flashButton.setChecked(false);
+                    }
+
+                } else {
+                    params = mcamera.getParameters();
+                    params.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+                    mcamera.setParameters(params);
+
+                }
+            }
+        });
     }
+
 
     Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
         @Override
@@ -141,8 +211,8 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
         public void onPictureTaken(final byte[] data, Camera camera) {
             previewButton.setChecked(false);
 
-            controlInflater = LayoutInflater.from(getBaseContext());
-            View viewControl = controlInflater.inflate(R.layout.save, null);
+            mcontrolInflater = LayoutInflater.from(getBaseContext());
+            View viewControl = mcontrolInflater.inflate(R.layout.save, null);
             ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
                     ViewGroup.LayoutParams.FILL_PARENT);
             getWindow().addContentView(viewControl, layoutParams);
@@ -151,12 +221,13 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
             saveButton.setOnClickListener(new Button.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    String msdCardDir = Environment.getExternalStorageDirectory().toString() + "/DCIM/Photo";
                     Bitmap bitmapPicture = BitmapFactory.decodeByteArray(data, 0, data.length);
                     Bitmap finalBitmap = rotatePortrait(bitmapPicture);
 
 
                     String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-                    File takenImage = new File(sdCardDir, timeStamp + "_Image.jpeg");
+                    File takenImage = new File(msdCardDir, timeStamp + "_Image.jpeg");
 
                     FileOutputStream outStream;
                     try {
@@ -196,6 +267,57 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
         }
     };
 
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        Camera.Parameters eventParameter = mcamera.getParameters();
+        int action = MotionEventCompat.getActionMasked(event);
+
+        if (event.getPointerCount() > 1) {
+            switch (action) {
+                case (MotionEvent.ACTION_POINTER_DOWN):
+                    Log.d(DEBUG_TAG, "Action pointer Down");
+                    mDist = getFingerSpacing(event);
+                    break;
+                case (MotionEvent.ACTION_MOVE):
+                    Log.d(DEBUG_TAG, "Action pointer move");
+                    handleZoom(event, params);
+                    break;
+            }
+        }
+        return true;
+    }
+
+    private void handleZoom(MotionEvent event, Camera.Parameters parameters) {
+        int maxZoom = parameters.getMaxZoom();
+        int zoom = parameters.getZoom();
+        float newDist = getFingerSpacing(event);
+        if (newDist > mDist) {
+            //zoom in
+            if (zoom < maxZoom) {
+                zoomController++;
+                if (zoomController % 3 == 1) {
+                    zoom++;
+                }
+            }
+
+        } else if (newDist < mDist) {
+            //zoom out
+            if (zoom > 0)
+                zoomController--;
+                if (zoomController % 3 == 1) {
+                    zoom--;
+                }
+        }
+        mDist = newDist;
+        parameters.setZoom(zoom);
+        mcamera.setParameters(parameters);
+    }
+
+    private float getFingerSpacing(MotionEvent event) {
+        float x = event.getX(0) - event.getX(1);
+        float y = event.getY(0) - event.getY(1);
+        return FloatMath.sqrt(x * x + y * y);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -231,22 +353,25 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        camera = camera.open();
-        camera.setDisplayOrientation(90);
+        mcamera = mcamera.open(cameraId);
+        params = mcamera.getParameters();
+//        params.set("orientation", "portrait");
+//        mcamera.setParameters(params);
+        mcamera.setDisplayOrientation(90);
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        if (previewing) {
-            camera.stopPreview();
-            previewing = false;
+        if (mpreviewing) {
+            mcamera.stopPreview();
+            mpreviewing = false;
         }
 
-        if (camera != null) {
+        if (mcamera != null) {
             try {
-                camera.setPreviewDisplay(surfaceHolder);
-                camera.startPreview();
-                previewing = true;
+                mcamera.setPreviewDisplay(surfaceHolder);
+                mcamera.startPreview();
+                mpreviewing = true;
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -255,9 +380,9 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        camera.stopPreview();
-        camera.release();
-        camera = null;
-        previewing = false;
+        mcamera.stopPreview();
+        mcamera.release();
+        mcamera = null;
+        mpreviewing = false;
     }
 }

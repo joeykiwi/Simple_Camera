@@ -16,13 +16,13 @@ public class AlbumActivity extends ActionBarActivity {
     private File mTargetDirector;
     private File[] mFiles;
     protected static ArrayList<Photo_Image> mImages = new ArrayList<Photo_Image>();
-    String sdCardDir = Environment.getExternalStorageDirectory().toString() + "/DCIM/Photo";
+    private String msdCardDir = Environment.getExternalStorageDirectory().toString() + "/DCIM/Photo";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.listview);
 
-        mTargetDirector = new File(sdCardDir);
+        mTargetDirector = new File(get_path());
         mFiles = mTargetDirector.listFiles();
 
         for(int i = 0;i < mFiles.length;i++) {
@@ -37,5 +37,9 @@ public class AlbumActivity extends ActionBarActivity {
         } else {
             Toast.makeText(getApplicationContext(), "its null!", Toast.LENGTH_LONG).show();
         }
+    }
+
+    public String get_path() {
+        return msdCardDir;
     }
 }

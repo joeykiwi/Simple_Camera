@@ -18,16 +18,15 @@ import java.util.ArrayList;
  * Created by jongwookim on 2/6/15.
  */
 public class Grid_Adapter extends ArrayAdapter<Photo_Image> {
-    Context context;
-    int resouceLayoutiId;
-    LinearLayout l_layout;
-    ArrayList<Photo_Image> images = null;
+    Context mcontext;
+    int mresouceLayoutiId;
+    ArrayList<Photo_Image> mimages = null;
 
     public Grid_Adapter(Context c, int r, ArrayList<Photo_Image> img) {
         super(c,r,img);
-        this.resouceLayoutiId = r;
-        this.context = c;
-        this.images = img;
+        mresouceLayoutiId = r;
+        mimages = img;
+        mcontext = c;
 
     }
 
@@ -35,16 +34,15 @@ public class Grid_Adapter extends ArrayAdapter<Photo_Image> {
         View row = convertView;
         DataHolder holder = null;
         if (row == null) {
-            Log.d("Joey", "row == null");
-            LayoutInflater inflater = ((Activity)context).getLayoutInflater();
-            row = inflater.inflate(resouceLayoutiId, parent, false);
+            LayoutInflater inflater = ((Activity)mcontext).getLayoutInflater();
+            row = inflater.inflate(mresouceLayoutiId, parent, false);
             holder = new DataHolder();
             holder.image = (ImageView) row.findViewById(R.id.images_view);
             row.setTag(holder);
         } else {
             holder = (DataHolder) row.getTag();
         }
-        Photo_Image img = images.get(position);
+        Photo_Image img = mimages.get(position);
         Bitmap bitmap = decodeBitmapFromUri(img.get_path(), 100, 100);
         holder.image.setImageBitmap(bitmap);
         return row;

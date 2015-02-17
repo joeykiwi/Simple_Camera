@@ -17,6 +17,22 @@
             android:id="@+id/silent_button"
             android:textOn="Silent"
             android:textOff="Silent" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Selfie"
+            android:id="@+id/selfie_button"
+            android:textOff="Back"
+            android:textOn="Selfie" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="New ToggleButton"
+            android:id="@+id/flash_button"
+            android:textOn="flash"
+            android:textOff="flash" />
     </LinearLayout>
 
     <LinearLayout
