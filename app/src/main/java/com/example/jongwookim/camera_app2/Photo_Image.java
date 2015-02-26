@@ -3,6 +3,7 @@ package com.example.jongwookim.camera_app2;
 /**
  * Created by jongwookim on 2/6/15.
  */
+//Photo_Image class is defined for image managing
 public class Photo_Image {
     public String _data;
     public String _pic;

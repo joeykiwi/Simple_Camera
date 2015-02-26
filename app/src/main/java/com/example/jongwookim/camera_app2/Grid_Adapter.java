@@ -29,7 +29,8 @@ public class Grid_Adapter extends ArrayAdapter<Photo_Image> {
         mcontext = c;
 
     }
-
+    //actually, adpater part is not perfectly understood at this moment,
+    //I used an typical type of array adapter
     public View getView(int position, View convertView, ViewGroup parent) {
         View row = convertView;
         DataHolder holder = null;

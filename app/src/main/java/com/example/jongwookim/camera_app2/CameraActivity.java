@@ -45,6 +45,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
     Camera mcamera;
     Camera.Parameters params;
     boolean mpreviewing = false;
+    //used for overlay layout
     LayoutInflater mcontrolInflater = null;
     SurfaceHolder surfaceHolder;
 
@@ -55,6 +56,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 
     String DEBUG_TAG = "Joey";
 
+    //cameraId is used for front and back camera
     int cameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
     float mDist;
     int zoomController = 0;
@@ -66,20 +68,22 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera);
 
+        //button overlay procedure
         mcontrolInflater = LayoutInflater.from(getBaseContext());
         View viewControl = mcontrolInflater.inflate(R.layout.control, null);
         ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
                 ViewGroup.LayoutParams.FILL_PARENT);
         this.addContentView(viewControl, layoutParams);
 
-
+        //getting holder for surfaceview (for camera use)
+        //override function locates below
         getWindow().setFormat(PixelFormat.UNKNOWN);
         SurfaceView surfaceView = (SurfaceView) findViewById(R.id.snap_Frame);
         surfaceHolder = surfaceView.getHolder();
         surfaceHolder.addCallback(this);
         surfaceHolder.setType(surfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 
-
+        //preview button
         previewButton = (ToggleButton) findViewById(R.id.preview_button);
         previewButton.setChecked(true);
         previewButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -93,6 +97,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
             }
         });
 
+        //silent button
         silentButton = (ToggleButton) findViewById(R.id.silent_button);
         silentButton.setChecked(false);
         silentButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -107,6 +112,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
         });
 
 
+//        used for auto focus on surface touch but it is currently commented out because of zoom feature
 
 //        LinearLayout cameraSurface = (LinearLayout) findViewById(R.id.control_backgroud);
 //        cameraSurface.setOnClickListener(new LinearLayout.OnClickListener() {
@@ -118,7 +124,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 //        });
 
 
-
+        //sanp button
         snapButton = (Button) findViewById(R.id.snap_button);
         snapButton.setOnClickListener(new Button.OnClickListener() {
             @Override
@@ -134,6 +140,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 
         });
 
+        //back and front camera switching button
         ToggleButton selfieButton = (ToggleButton) findViewById(R.id.selfie_button);
         selfieButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -174,6 +181,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
             }
         });
 
+        //flash button
         final ToggleButton flashButton = (ToggleButton) findViewById(R.id.flash_button);
         flashButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -199,38 +207,45 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
     }
 
 
-    Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
-        @Override
-        public void onAutoFocus(boolean success, Camera camera) {
-            snapButton.setEnabled(true);
-        }
-    };
+//    Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
+//        @Override
+//        public void onAutoFocus(boolean success, Camera camera) {
+//            snapButton.setEnabled(true);
+//        }
+//    };
 
+
+    //this function is called when camera takes a picture
     Camera.PictureCallback jpgCallback = new Camera.PictureCallback() {
         @Override
         public void onPictureTaken(final byte[] data, Camera camera) {
             previewButton.setChecked(false);
 
+            //create save button when camera takes a picture and stops preview with the snapped image
             mcontrolInflater = LayoutInflater.from(getBaseContext());
             View viewControl = mcontrolInflater.inflate(R.layout.save, null);
             ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
                     ViewGroup.LayoutParams.FILL_PARENT);
             getWindow().addContentView(viewControl, layoutParams);
 
+            //save button
             Button saveButton = (Button) findViewById(R.id.save_button);
             saveButton.setOnClickListener(new Button.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    String msdCardDir = Environment.getExternalStorageDirectory().toString() + "/DCIM/Photo";
+                    //image location and saving procedure
+                    String msdCardDir = Environment.getExternalStorageDirectory().toString() + "/DCIM/Camera";
                     Bitmap bitmapPicture = BitmapFactory.decodeByteArray(data, 0, data.length);
                     Bitmap finalBitmap = rotatePortrait(bitmapPicture);
 
 
+                    //timestamp used for unique image name
                     String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
                     File takenImage = new File(msdCardDir, timeStamp + "_Image.jpeg");
 
                     FileOutputStream outStream;
                     try {
+                        //procedure of compressing bitmap images to JPEG image files
                         outStream = new FileOutputStream(takenImage);
                         finalBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
                         outStream.flush();
@@ -251,6 +266,8 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
     Camera.ShutterCallback sCallback = new Camera.ShutterCallback() {
         @Override
         public void onShutter() {
+            //this manages shutter but it is not currently used, I basically turned off this callback function
+            //when silent mode is applied
             AudioManager mgr = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
             int streamType = AudioManager.STREAM_SYSTEM;
             mgr.setStreamSolo(streamType, true);
@@ -267,6 +284,8 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
         }
     };
 
+    //this function manages motion event of finger (pinch mode)
+    //currently only double finger usage works (zoom in/out feature)
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         Camera.Parameters eventParameter = mcamera.getParameters();
@@ -287,6 +306,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
         return true;
     }
 
+    //where actually zoom is controlled
     private void handleZoom(MotionEvent event, Camera.Parameters parameters) {
         int maxZoom = parameters.getMaxZoom();
         int zoom = parameters.getZoom();
@@ -302,17 +322,19 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 
         } else if (newDist < mDist) {
             //zoom out
-            if (zoom > 0)
+            if (zoom > 0) {
                 zoomController--;
                 if (zoomController % 3 == 1) {
-                    zoom--;
+                  zoom--;
                 }
+            }
         }
         mDist = newDist;
         parameters.setZoom(zoom);
         mcamera.setParameters(parameters);
     }
 
+    //get position of two finger and amount of zoom
     private float getFingerSpacing(MotionEvent event) {
         float x = event.getX(0) - event.getX(1);
         float y = event.getY(0) - event.getY(1);
@@ -326,6 +348,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
         return true;
     }
 
+    //currently, the image is taken landscape mode and I manually change its matrix to show like portrait
     private Bitmap rotatePortrait(Bitmap bitmap) {
         int w = bitmap.getWidth();
         int h = bitmap.getHeight();
@@ -353,6 +376,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
+        //where camera button is clicked, surface is created and also camera opens
         mcamera = mcamera.open(cameraId);
         params = mcamera.getParameters();
 //        params.set("orientation", "portrait");
@@ -362,6 +386,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        //this actually starts preview
         if (mpreviewing) {
             mcamera.stopPreview();
             mpreviewing = false;
@@ -380,6 +405,7 @@ public class CameraActivity extends ActionBarActivity implements SurfaceHolder.C
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
+        //when surface destroyed, I thought this is like deconstructor
         mcamera.stopPreview();
         mcamera.release();
         mcamera = null;
